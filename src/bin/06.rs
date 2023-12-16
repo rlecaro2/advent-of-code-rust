@@ -10,19 +10,19 @@ fn quadratic_zero(a: f32, b: f32, c: f32) -> (f32, f32) {
 }
 
 // Paired with @asparagus
-pub fn part_one(input: &str) -> Option<u32> {
+pub fn part_one(input: &str) -> Option<u64> {
     let number_re = Regex::new(r"\d+").unwrap();
 
     let time_line = input.lines().nth(0).unwrap();
-    let times: Vec<u32> = number_re
+    let times: Vec<u64> = number_re
         .find_iter(time_line)
-        .map(|d| d.as_str().parse::<u32>().unwrap())
+        .map(|d| d.as_str().parse::<u64>().unwrap())
         .collect();
 
     let distance_line = input.lines().nth(1).unwrap();
-    let distances: Vec<u32> = number_re
+    let distances: Vec<u64> = number_re
         .find_iter(distance_line)
-        .map(|d| d.as_str().parse::<u32>().unwrap())
+        .map(|d| d.as_str().parse::<u64>().unwrap())
         .collect();
 
     let result = times
@@ -35,7 +35,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 
             let (left, right) = quadratic_zero(-1.0, time, -distance);
             // +1 to consider one of the two
-            let mut res = 1 + (right.floor() - left.ceil()) as u32;
+            let mut res = 1 + (right.floor() - left.ceil()) as u64;
 
             if left == left.ceil() {
                 res -= 1;
@@ -51,8 +51,11 @@ pub fn part_one(input: &str) -> Option<u32> {
     return Some(result);
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u64> {
+    let whitespace_re = Regex::new(r"[^\S\r\n]").unwrap();
+    let clean_input = whitespace_re.replace_all(input, "");
+
+    return part_one(&clean_input);
 }
 
 #[cfg(test)]
@@ -68,6 +71,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(71503));
     }
 }
