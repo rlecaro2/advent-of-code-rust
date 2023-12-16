@@ -29,6 +29,38 @@ fn get_hand_type(cards: &str) -> HandType {
     }
 }
 
+fn increase_hand_type(cards: &str, initial_type: HandType) -> HandType {
+    let jokers = cards.chars().filter(|&c| c == '*').count();
+    match initial_type {
+        HandType::FiveOfAKind => HandType::FiveOfAKind,
+        HandType::FourOfAKind => match jokers {
+            4 | 1 => HandType::FiveOfAKind,
+            _ => initial_type,
+        },
+        HandType::FullHouse => match jokers {
+            3 | 2 => HandType::FiveOfAKind,
+            _ => initial_type,
+        },
+        HandType::ThreeOfAKind => match jokers {
+            3 | 1 => HandType::FourOfAKind,
+            _ => initial_type,
+        },
+        HandType::TwoPair => match jokers {
+            2 => HandType::FourOfAKind,
+            1 => HandType::FullHouse,
+            _ => initial_type,
+        },
+        HandType::OnePair => match jokers {
+            2 | 1 => HandType::ThreeOfAKind,
+            _ => initial_type,
+        },
+        HandType::HighCard => match jokers {
+            1 => HandType::OnePair,
+            _ => initial_type,
+        },
+    }
+}
+
 fn get_card_value(card: char) -> u64 {
     match card {
         'A' => 14,
@@ -44,6 +76,7 @@ fn get_card_value(card: char) -> u64 {
         '4' => 4,
         '3' => 3,
         '2' => 2,
+        '*' => 1, // "Jokers"
         _ => 0,
     }
 }
@@ -59,7 +92,6 @@ enum HandType {
     HighCard = 1,
 }
 
-// #[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[derive(Debug, PartialEq, Eq)]
 struct Hand {
     cards: String,
@@ -90,9 +122,12 @@ impl Ord for Hand {
 }
 
 fn create_hand(cards: &str, bid: u64) -> Hand {
+    let initial_type = get_hand_type(cards);
+    let hand_type = increase_hand_type(cards, initial_type);
+
     Hand {
         cards: cards.to_string(),
-        hand_type: get_hand_type(cards),
+        hand_type,
         bid,
     }
 }
@@ -121,8 +156,30 @@ pub fn part_one(input: &str) -> Option<u64> {
     return Some(total);
 }
 
-pub fn part_two(_: &str) -> Option<u64> {
-    None
+/** Very similar to part one but we replace 'J' with '*', the changes in the logic are in the hand itself */
+pub fn part_two(input: &str) -> Option<u64> {
+    let hand_re = Regex::new(r"(?<cards>\w{5}) (?<bid>\d+)").unwrap();
+    let j_re = Regex::new(r"J").unwrap();
+
+    let mut heap: BinaryHeap<Hand> = BinaryHeap::new();
+
+    for line in input.lines() {
+        let caps = hand_re.captures(line).unwrap();
+        let cards = j_re.replace_all(&caps["cards"], "*");
+        let bid = caps["bid"].parse::<u64>().unwrap();
+
+        let hand = create_hand(&cards, bid);
+        heap.push(hand);
+    }
+
+    let mut total = 0;
+    let mut multiplier = heap.iter().count() as u64;
+    while let Some(hand) = heap.pop() {
+        total += hand.bid * multiplier;
+        multiplier -= 1;
+    }
+
+    return Some(total);
 }
 
 #[cfg(test)]
@@ -138,7 +195,7 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(5905));
     }
 
     #[test]
@@ -165,6 +222,19 @@ mod tests {
                 hand_type: HandType::ThreeOfAKind,
             },
             "ordering isn't working"
+        );
+
+        assert!(
+            Hand {
+                cards: "*QQQQ".to_string(),
+                bid: 0,
+                hand_type: HandType::ThreeOfAKind,
+            } < Hand {
+                cards: "QQQQQ".to_string(),
+                bid: 0,
+                hand_type: HandType::ThreeOfAKind,
+            },
+            "ordering isn't working with a joker"
         );
     }
 }
